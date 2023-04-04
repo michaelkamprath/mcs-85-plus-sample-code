@@ -1,0 +1,257 @@
+#include "kernel.a85"
+
+.org 0 "program"
+start:
+    ; set initial N value
+    lxi de,cur_n_value
+    mvi a,1
+    call set_4byte_value
+
+.n_loop:
+    call is_prime32
+    cpi 0
+    jz .is_not_prime
+    lxi de,cur_n_value
+    call print_4byte_hex
+    lxi hl,.is_prime_suffix
+    call M_SENDSTRING
+    call M_NEWLINE
+.is_not_prime:
+    lxi bc,cur_n_value
+    call inc32
+    jmp .n_loop
+
+.is_prime_suffix:
+    .cstr " is prime!"
+.is_not_prime_suffix:
+    .cstr " is NOT"
+; print 4 byte value in DE in hex
+print_4byte_hex:
+    push hl             ; save hl
+    push psw            ; save psw
+    lxi hl,3            ; set HL to 3
+    dad de              ; add DE to get pointer to last byte in HL
+    xchg                ; place last byte pointer in DE
+    mvi l,4             ; use L as loop counter
+    mvi h,0             ; use H as leading zero indicator
+.loop:
+    ldax de             ; place byte value in A
+    cpi 0               ; see if value is zero
+    jnz .printbyte      ;
+    mov a,h             ; load leading zero flag
+    cpi 1               ; see if we are not skipping zeros
+    jz .printbyte       ; we are not skipping zeros.
+    mov a,l             ; check loop counter value
+    cpi 1               ; see if we are on last byte
+    jnz .nextloop       ; not on last byte, so skip
+.printbyte:
+    ldax de             ; we not skipping zeros, reload byte value
+    call M_HEXBYTEOUT   ; print byte value in hex
+    mvi h,1             ; we have printed a byte. no more skipping leading zeros.
+.nextloop:
+    dcr l               ; decrement loop counter
+    jz .end             ; if equal, quit
+    dcx de              ; decrement byte pointer
+    jmp .loop           ; loop
+.end:
+    pop psw             ; restore PSW
+    pop hl              ; restore HL
+    ret
+
+; checks if 4 bytes pointed at by de is zero. sets A to 0 or 1
+is_zero32:
+    push hl
+    push de
+    xchg            ; place DE in HL
+    mvi a,0
+    cmp [hl]
+    jnz .is_not
+    inx hl
+    cmp [hl]
+    jnz .is_not
+    inx hl
+    cmp [hl]
+    jnz .is_not
+    inx hl
+    cmp [hl]
+    jnz .is_not
+.is_zero:
+    mvi a,1
+    jmp .end
+.is_not:
+    mvi a,0
+.end:
+    pop de
+    pop hl
+    ret
+
+; sets 4 bytes pointed to by de to 1 byte value in A
+set_4byte_value:
+    push de
+    push psw
+    stax de
+    mvi a,0
+    inx de
+    stax de
+    inx de
+    stax de
+    inx de
+    stax de
+    pop psw
+    pop de
+    ret
+
+; is_prime32
+;   determines wither the passed uint32 is a prime
+;
+;   Arguments
+;       none - uses cur_n_value
+;
+;   returns
+;       register A - 0 is not prime, 1 if is prime
+;
+;
+is_prime32:
+    ; first check if N is 2 or 3
+    ; if high bytes are not 0, then it is also not 2 or 3
+    lda cur_n_value+3
+    cpi 0
+    jnz .modulo_two
+    lda cur_n_value+2
+    cpi 0
+    jnz .modulo_two
+    lda cur_n_value+1
+    cpi 0
+    jnz .modulo_two
+    ; now check LSB
+    lda cur_n_value+0
+    cpi 2
+    jz .is_prime
+    cpi 3
+    jz .is_prime
+    cpi 1
+    jz .is_not_prime
+    cpi 0
+    jz .is_not_prime
+.modulo_two:
+    ; check to see if a power of two. If LSb is 0, then not prime
+    lda cur_n_value+0
+    ani $01
+    jz .is_not_prime
+.modulo_three:
+    ; check to see if multiple of 3
+    ; set dividend to current N
+    lxi bc,cur_dividend
+    lxi de,cur_n_value
+    mvi a,4
+    call memcopy
+    ; set divisor to 3
+    lxi de,cur_divisor
+    mvi a,3
+    call set_4byte_value
+    call divide32
+    call is_zero32          ; check if remainder pointed to by DE is zero
+    cpi 1
+    jz .is_not_prime        ; i divisiable byt 3, not a prime
+.loop_init:
+    ; set i_value to 5
+    lxi de,.i_value
+    mvi a,5
+    call set_4byte_value
+.loop:
+    ; check I*I <= N
+    lxi bc,cur_mulitplicand
+    lxi de,.i_value
+    mvi a,4
+    call memcopy
+    lxi bc,cur_multiplier
+    lxi de,.i_value
+    mvi a,4
+    call memcopy
+    lxi bc,cur_mulitplicand
+    lxi de,cur_multiplier
+    call multiply32
+    ; high 4 bytes of result should be 0 since we are only doing 32 bit N
+    ; If these byes are non-zero, then we know I*I > N and we are done with
+    ; this loop.
+    call is_zero32          ; DE already points to high word in cur_multiplier
+    cpi 1                   ; A is 1 if high word is zero
+    jnz .iteration_loop_done
+    ; now compare low 4 bytes of result to N. if I*I > N, is_prime
+    ; put I*I on left and N on right
+    lxi bc,cur_mulitplicand
+    lxi de,cur_n_value
+    call cmp32
+    jc .loop_done_is_prime  ; carry indicates left > right
+    ; if we are here, I*I <= N. Save I*I value
+    lxi bc,.i_squared_value
+    lxi de,cur_dividend
+    mvi a,4
+    call memcopy
+    ; now check various modulos. 4 byte iterator I is one stack at sp+0
+    ; check N % I == 0
+    lxi bc,cur_dividend
+    lxi de,cur_n_value
+    mvi a,4
+    call memcopy
+    lxi bc,cur_divisor
+    lxi de,.i_value
+    mvi a,4
+    call memcopy
+    lxi bc,cur_dividend
+    lxi de,cur_divisor
+    call divide32
+    call is_zero32              ; DE already points remainder in cur_divisor
+    cpi 1
+    jz .loop_done_is_not_prime  ; if remainder is 0, not a prime.
+    ; check N % (I+2) == 0
+    lxi bc,cur_dividend
+    lxi de,cur_n_value
+    mvi a,4
+    call memcopy
+    lxi bc,cur_divisor
+    lxi de,.i_value
+    mvi a,4
+    call memcopy
+    lxi bc,cur_divisor
+    ; increment divisor twice to get I+2
+    call inc32
+    call inc32
+    lxi bc,cur_dividend
+    lxi de,cur_divisor
+    call divide32
+    call is_zero32              ; DE already points remainder in cur_divisor
+    cpi 1
+    jz .loop_done_is_not_prime  ; if remainder is 0, not a prime.
+    ; add I+6 and loop
+    lxi de,temp_value
+    mvi a,6
+    call set_4byte_value
+    lxi bc,.i_value
+    call add32
+    jmp .loop
+.iteration_loop_done:
+.loop_done_is_prime:
+.is_prime:
+    mvi a,1
+    jmp .end
+.loop_done_is_not_prime:
+.is_not_prime:
+    mvi a,0
+.end:
+    ret
+.i_value:
+    .4byte 0
+.i_squared_value:
+    .4byte 0
+
+
+cur_n_value:
+    .4byte 1
+cur_mulitplicand:
+cur_dividend:
+    .4byte 0
+cur_multiplier:
+cur_divisor:
+temp_value:
+    .4byte 0

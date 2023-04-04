@@ -1,0 +1,1010 @@
+description: MCS-85+
+general:
+  address_size: 16
+  endian: little
+  registers:
+    - a
+    - b
+    - c
+    - d
+    - e
+    - h
+    - l
+    - m
+    - bc
+    - de
+    - hl
+    - sp
+    - psw
+  origin: 0
+  identifier:
+    name: intel-8085-asm
+    version: "0.1.0"
+    extension: a85
+  min_version: 0.3.0
+  cstr_terminator: 3
+operand_sets:
+  8_bit_source:
+    operand_values:
+      b_reg:
+        type: register
+        register: b
+        bytecode:
+          value: 0
+          size: 3
+      c_reg:
+        type: register
+        register: c
+        bytecode:
+          value: 1
+          size: 3
+      d_reg:
+        type: register
+        register: d
+        bytecode:
+          value: 2
+          size: 3
+      e_reg:
+        type: register
+        register: e
+        bytecode:
+          value: 3
+          size: 3
+      h_reg:
+        type: register
+        register: h
+        bytecode:
+          value: 4
+          size: 3
+      l_reg:
+        type: register
+        register: l
+        bytecode:
+          value: 5
+          size: 3
+      m_reg:
+        type: register
+        register: m
+        bytecode:
+          value: 6
+          size: 3
+      m_reg_actual:
+        type: indirect_register
+        register: hl
+        bytecode:
+          value: 6
+          size: 3
+      a_reg:
+        type: register
+        register: a
+        bytecode:
+          value: 7
+          size: 3
+  register_pairs:
+    operand_values:
+      bc_pair_orig:
+        type: register
+        register: b
+        bytecode:
+          value: 0
+          size: 2
+      bc_pair:
+        type: register
+        register: bc
+        bytecode:
+          value: 0
+          size: 2
+      de_pair_orig:
+        type: register
+        register: d
+        bytecode:
+          value: 1
+          size: 2
+      de_pair:
+        type: register
+        register: de
+        bytecode:
+          value: 1
+          size: 2
+      hl_pair_orig:
+        type: register
+        register: h
+        bytecode:
+          value: 2
+          size: 2
+      hl_pair:
+        type: register
+        register: hl
+        bytecode:
+          value: 2
+          size: 2
+      sp_pair:
+        type: register
+        register: sp
+        bytecode:
+          value: 3
+          size: 2
+  register_pairs_bc_de_only:
+    operand_values:
+      bc_pair_orig:
+        type: register
+        register: b
+        bytecode:
+          value: 0
+          size: 2
+      bc_pair:
+        type: register
+        register: bc
+        bytecode:
+          value: 0
+          size: 2
+      de_pair_orig:
+        type: register
+        register: d
+        bytecode:
+          value: 1
+          size: 2
+      de_pair:
+        type: register
+        register: de
+        bytecode:
+          value: 1
+          size: 2
+  uint16_no_bytecode:
+    operand_values:
+      uint16:
+        type: numeric
+        argument:
+          size: 16
+          byte_align: true
+          endian: little
+  uint8_no_bytecode:
+    operand_values:
+      uint16:
+        type: numeric
+        argument:
+          size: 8
+          byte_align: true
+instructions:
+  # General
+  nop:
+    # no operation
+    bytecode:
+      value: 0
+      size: 8
+  hlt:
+    # halt
+    bytecode:
+      value: 0x76
+      size: 8
+  stc:
+    # set Carry flag
+    bytecode:
+      value: 0x37
+      size: 8
+  cmc:
+    # toggle carry flag (1's complement)
+    bytecode:
+      value: 0x3F
+      size: 8
+  out:
+    # place A on data bus and indicated port on address bus
+    bytecode:
+        value: 0xD3
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  in:
+    # reads eight bits of data from the specified port and loads it into the accumulator.
+    bytecode:
+        value: 0xDB
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+
+  # Undocumented Instructions
+  arhl:
+    # rotate HL right (undocumented)
+    bytecode:
+      value: 0x10
+      size: 8
+  dsub:
+    # subtract BC from HL results in HL (undocumented)
+    bytecode:
+      value: 0x08
+      size: 8
+  rdel:
+    # rotate DE left through Carry (undocumented)
+    bytecode:
+      value: 0x18
+      size: 8
+  ldhi:
+    # DE = HL + 1 byte argument (undocumented)
+    bytecode:
+      value: 0x28
+      size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  ldsi:
+    # DE = SP + 1 byte argument (undocumented)
+    bytecode:
+      value: 0x38
+      size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  shlx:
+    # Store HL as per DE
+    bytecode:
+        value: 0xD9
+        size: 8
+  lhlx:
+    # load HL as per DE
+    bytecode:
+        value: 0xED
+        size: 8
+  rstv:
+    # restart on overflow
+    # On overflow CALL 0040
+    bytecode:
+      value: 0xCB
+      size: 8
+  jk:
+    # jump if K (X5) - undocumented underflow or overflow indicator
+    bytecode:
+        value: 0xFD
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jnk:
+    # jump if not K (X5) - undocumented underflow or overflow indicator
+    bytecode:
+        value: 0xDD
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+
+  # Interupt Control
+  rim:
+    #
+    bytecode:
+      value: 0x20
+      size: 8
+  sim:
+    # Set Interupt Mask
+    bytecode:
+      value: 0x30
+      size: 8
+  di:
+    # disable interupts
+    bytecode:
+        value: 0xF3
+        size: 8
+  ei:
+    # enable interupts
+    bytecode:
+        value: 0xFB
+        size: 8
+
+  # Data Transfer
+  lxi:
+    # load immediate 16-bit
+    # Bit format 00xx0001, xx = register pair
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 1
+          size: 4
+    operands:
+      count: 2
+      operand_sets:
+        list:
+          - register_pairs
+          - uint16_no_bytecode
+  stax:
+    # store A contents direct to memory address in register pair
+    # Bit format 00xx0010, xx = register pair BC or DE
+    bytecode:
+      value: 0
+      size: 2
+      suffix:
+        value: 2
+        size: 4
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - register_pairs_bc_de_only
+  ldax:
+    # load A direct from memory address in register pair
+    # Bit format 00xx0010, xx = register pair BC or DE
+    bytecode:
+      value: 0
+      size: 2
+      suffix:
+        value: 10
+        size: 4
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - register_pairs_bc_de_only
+  shld:
+    # store HL direct
+    bytecode:
+      value: 0x22
+      size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  lhld:
+    # load HL direct
+    bytecode:
+      value: 0x2A
+      size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  sta:
+    # store A direct
+    bytecode:
+      value: 0x32
+      size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  lda:
+    # load A direct
+    bytecode:
+      value: 0x3A
+      size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  mvi:
+    # move immediate
+    # Bit format 00xxx110, xxx = register
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 6
+          size: 3
+    operands:
+      count: 2
+      operand_sets:
+        list:
+          - 8_bit_source
+          - uint8_no_bytecode
+  mov:
+    # move value from register to register
+    bytecode:
+        value: 1
+        size: 2
+    operands:
+      count: 2
+      operand_sets:
+        list:
+          - 8_bit_source
+          - 8_bit_source
+        disallowed_pairs:
+          - [m_reg,m_reg]
+          - [m_reg_actual,m_reg]
+          - [m_reg,m_reg_actual]
+          - [m_reg_actual,m_reg_actual]
+  xthl:
+    # exchange contentents of HL with memory pointed to by SP (stack pointer)
+    bytecode:
+        value: 0xE3
+        size: 8
+  xchg:
+    # exchange HL with DE
+    bytecode:
+        value: 0xEB
+        size: 8
+
+  # Arithmetic and Logic
+  add:
+    # add source value to A register
+    bytecode:
+        value: 16
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  adc:
+    # add source value and carry flag to A register
+    bytecode:
+        value: 17
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  adi:
+    # add immediate value to A register
+    bytecode:
+        value: 0xC6
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  aci:
+    # add with carry immediate value to A register
+    bytecode:
+        value: 0xCE
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  sub:
+    # subtract source value from A register
+    bytecode:
+        value: 18
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  sbb:
+    # subtract with borrow source value from A register
+    bytecode:
+        value: 19
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  sui:
+    # subtract immediate value from A register
+    bytecode:
+        value: 0xD6
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  sbi:
+    # subtract with borrow immediate value from A register
+    bytecode:
+        value: 0xDE
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  inx:
+    # increment register pair
+    # Bit format 00xx0011, xx = register pair
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 3
+          size: 4
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - register_pairs
+  dcx:
+    # decrement register pair
+    # Bit format 00xx1011, xx = register pair
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 11
+          size: 4
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - register_pairs
+  inr:
+    # increment register
+    # Bit format 00xxx100, xxx = register
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 4
+          size: 3
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  dcr:
+    # decrement register
+    # Bit format 00xxx101, xxx = register
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 5
+          size: 3
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  cma:
+    # product 1's complement of A in A
+    bytecode:
+      value: 0x2F
+      size: 8
+  rlc:
+    # rotate A left (B7 to B0 and Carry)
+    bytecode:
+      value: 0x07
+      size: 8
+  rrc:
+    # rotate A right (B0 to B7 and Carry)
+    bytecode:
+      value: 0x0F
+      size: 8
+  ral:
+    # rotate A left through carry (B7 to Carry, Carry to B0)
+    bytecode:
+      value: 0x17
+      size: 8
+  rar:
+    # rotate A right through carry (B0 to Carry, Carry to B7)
+    bytecode:
+      value: 0x1F
+      size: 8
+  daa:
+    # adjust A to binary coded decimal
+    bytecode:
+      value: 0x27
+      size: 8
+  dad:
+    # add contents of register pair to HL
+    # Bit format 00xx1001, xx = register pair
+    bytecode:
+        value: 0
+        size: 2
+        suffix:
+          value: 9
+          size: 4
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - register_pairs
+  ana:
+    # AND source value to A register
+    bytecode:
+        value: 20
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  ani:
+    # AND immediate value to A register
+    bytecode:
+        value: 0xE6
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  xra:
+    # XOR source value to A register
+    bytecode:
+        value: 21
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  xri:
+    # XOR immediate value to A register
+    bytecode:
+        value: 0xEE
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  ora:
+    # OR source value to A register
+    bytecode:
+        value: 22
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  ori:
+    # OR immediate value to A register
+    bytecode:
+        value: 0xF6
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+  cmp:
+    # Compare source value to A register
+    # Zero flag indictes equality
+    # Carry flag indicates source value us greater than A
+    bytecode:
+        value: 23
+        size: 5
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - 8_bit_source
+  cpi:
+    # Compare immediate value to A register
+    bytecode:
+        value: 0xFE
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint8_no_bytecode
+
+  # Program Flow Control
+  jmp:
+    # unconditional jump
+    bytecode:
+        value: 0xC3
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jz:
+    # jump if zero flag is set
+    bytecode:
+        value: 0xCA
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jnz:
+    # jump if zero flag not set
+    bytecode:
+        value: 0xC2
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jc:
+    # jump if carry flag is set
+    bytecode:
+        value: 0xDA
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jnc:
+    # jump if carry flag not set
+    bytecode:
+        value: 0xD2
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jpe:
+    # jump if parity is even (parity flag is one)
+    bytecode:
+        value: 0xEA
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jpo:
+    # jump if parity is odd (parity flag is zero)
+    bytecode:
+        value: 0xE2
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jm:
+    # jump if accumultor is minus (sign flag is one)
+    bytecode:
+        value: 0xFA
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  jp:
+    # jump if accumultor is positive (sign flag is zero)
+    bytecode:
+        value: 0xF2
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  pchl:
+    # Move HL to Program Counter (Jump to address in HL)
+    bytecode:
+        value: 0xE9
+        size: 8
+
+  # Stack Operations
+  ret:
+    # return unconditionally
+    bytecode:
+        value: 0xC9
+        size: 8
+  rz:
+    # return if zero flag is set
+    bytecode:
+        value: 0xC8
+        size: 8
+  rnz:
+    # return if zero flag not set
+    bytecode:
+        value: 0xC0
+        size: 8
+  rc:
+    # return if carry flag is set
+    bytecode:
+        value: 0xD8
+        size: 8
+  rnc:
+    # return if carry flag not set
+    bytecode:
+        value: 0xD0
+        size: 8
+  rpe:
+    # return if parity is even (parity flag is one)
+    bytecode:
+        value: 0xE8
+        size: 8
+  rpo:
+    # return if parity is odd (parity flag is zero)
+    bytecode:
+        value: 0xE0
+        size: 8
+  rm:
+    # return if accumultor is negative (sign flag is one)
+    bytecode:
+        value: 0xF8
+        size: 8
+  rp:
+    # return if accumultor is positive (sign flag is zero)
+    bytecode:
+        value: 0xF0
+        size: 8
+  call:
+    # Call unconditionally
+    bytecode:
+        value: 0xCD
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cz:
+    # Call if zero
+    bytecode:
+        value: 0xCC
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cnz:
+    # Call if not zero
+    bytecode:
+        value: 0xC4
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cc:
+    # Call if carry
+    bytecode:
+        value: 0xDC
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cnc:
+    # Call if not carry
+    bytecode:
+        value: 0xD4
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cpe:
+    # Call if parity even (panty flag is set to one)
+    bytecode:
+        value: 0xEC
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cpo:
+    # Call if parity odd (panty flag is set to zero)
+    bytecode:
+        value: 0xE4
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cm:
+    # Call if accumulator is minus (sign flag is one)
+    bytecode:
+        value: 0xFC
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  cp:
+    # Call if accumulator is positive (sign flag is zero)
+    bytecode:
+        value: 0xF4
+        size: 8
+    operands:
+      count: 1
+      operand_sets:
+        list:
+          - uint16_no_bytecode
+  rst:
+    bytecode:
+      value: 3
+      size: 2
+      suffix:
+        value: 7
+        size: 3
+    operands:
+      count: 1
+      specific_operands:
+        reset_index:
+          list:
+            address_code:
+              type: numeric_bytecode
+              bytecode:
+                size: 3
+                max: 7
+                min: 0
+                byte_align: false
+  push:
+    variants:
+      # Push a register pair to the stack
+      # Bit format 11xx0101, xx = register pair
+      - bytecode:
+          value: 3
+          size: 2
+          suffix:
+            value: 5
+            size: 4
+        operands:
+          count: 1
+          operand_sets:
+            list:
+              - register_pairs
+            disallowed_pairs:
+              - [sp_pair]
+      # Push the Program Status Words (A + flags)
+      - bytecode:
+          value: 0xF5
+          size: 8
+        operands:
+          count: 1
+          specific_operands:
+            psw_register:
+              list:
+                program_status_word:
+                  type: register
+                  register: psw
+  sphl:
+    # Move HL to SP
+    bytecode:
+        value: 0xF9
+        size: 8
+  pop:
+    variants:
+      # Pop to a register pair except stack pointer SP
+      # Bit format 00xx1011, xx = register pair
+      - bytecode:
+          value: 3
+          size: 2
+          suffix:
+            value: 1
+            size: 4
+        operands:
+          count: 1
+          operand_sets:
+            list:
+              - register_pairs
+            disallowed_pairs:
+              - [sp_pair]
+      # Pop to Program Status Words (A + flags)
+      - bytecode:
+          value: 0xF1
+          size: 8
+        operands:
+          count: 1
+          specific_operands:
+            register_psw:
+              list:
+                program_status_word:
+                  type: register
+                  register: psw

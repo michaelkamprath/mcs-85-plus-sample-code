@@ -1,0 +1,86 @@
+; MCS-85+ ROM methods
+
+;================================================================================
+;*************************  SENDSTRING  ****************************
+;================================================================================
+;  NAME: SENDSTRING
+;  FUNCTION: SENDS A TERMINATED STRING TO THE DISPLAY
+;  INPUTS: POINTER TO STRING IN HL
+;  OUTPUTS: NONE
+;  USER IO: SENDS STRING TO USER VIA SERIAL PORT
+;  DESTROYS: HL
+;  CALLS: CO
+;  DESCRIPTION:DISPLAYS EACH CHARACTER IN THE PROVIDED STRING TO THE USER
+;    VIA THE SERIAL PORT.  A HANDLE TO THE STRING IS PROVIDED IN THE HL PAIR
+;    AND THE OUTPUT CONTINUES UNTIL AN END OF TEXT (ETX) CONTROL CHARACTER IS
+;    FOUND
+;    #### WARNING ####
+;    ALL STRINGS MUST END WITH A ETX
+;================================================================================
+M_SENDSTRING = $0589
+
+
+;================================================================================
+;****************  HEXADECIMAL OUTPUT SUBROUTINE  *******************
+;================================================================================
+;  NAME: HO
+;  FUNCTION: SENDS BYTE VALUE IN REGISTER A TO TERMINAL IN HEXADECIMAL
+;  INPUTS: PATTERN IN A
+;  OUTPUTS: NONE
+;  USER IO: SENDS ONE OR TWO ASCII CHARACTERS TO TERMINAL
+;  DESTROYS: NOTHING
+;  CALLS: CO
+;  DESCRIPTION:ENTER AT HO TO SEND VALUE IN REGISTER TO AS TWO DIGIT HEX
+;    REPRESENTATION OF VALUE.  ENTER AT HOL FOR OUTPUT OF ONLY
+;    THE LOWER NIBBLE
+;================================================================================
+M_HEXBYTEOUT = $04cb
+
+;================================================================================
+;**********************  NEWLINE SUBROUTINE  ************************
+;================================================================================
+;  NAME: NEWLINE
+;  FUNCTION: SENDS A NEWLINE (CR, LF) TO THE DISPLAY VIA SERIAL PORT
+;  INPUTS: NONE
+;  OUTPUTS: NONE
+;  USER IO: SENDS NEWLINE TO TERMINAL VIA SERIAL PORT
+;  DESTROYS: NOTHING
+;  CALLS: CO
+;  DESCRIPTION:SENDS A NEWLINE TO DISPLAY VIA SERIAL PORT
+;================================================================================
+M_NEWLINE = $04dc
+
+;   Memory Map
+;       0x0000 - 0x07FF - ROM
+;       0x1800 - 0x18FF - 256 bytes RAM
+;           0x18B0+ - Used by monitor
+;       0x2800 - 0x2BFF - 1K RAM
+;
+
+STACK_TOP = $18AF
+#create_memzone stack $1840 $18AF
+#create_memzone kernel_variables $1800 $183F
+#create_memzone kernel $2800 $2A1F
+#create_memzone program $2A20 $2BFF
+
+; fill the stack with zeros, mostly to triger a compilation error if
+; something else tries to compile into this space.
+.org 0 "stack"
+.zerountil STACK_TOP
+
+; Program Start
+;   $2800 is the start in ram for a program. Initialize the "kernel" and
+;   jump to the user code's start.
+.org 0 "kernel"
+_init:
+    ; Initialize the stack pointer
+    lxi hl,STACK_TOP
+    sphl
+    ; jump to the program start
+    jmp _program_start
+
+#include "mathlib.a85"
+#include "memlib.a85"
+
+.org 0 "program"
+_program_start:         ; just need a label for the jump point above

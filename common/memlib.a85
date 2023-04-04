@@ -1,0 +1,59 @@
+.memzone kernel
+
+; memcopy
+;
+;   Arguments
+;       bc - address of destination
+;       de - address of source
+;       a - number of bytes to copy
+;
+memcopy:
+    push bc             ; save original bc
+    push de             ; save original de
+    push hl             ; save hl
+    push psw            ; save PSW
+    mov l,a             ; use L as loop counter
+.loop:
+    ldax de             ; load byte value from source
+    stax bc             ; write byte value to destination
+    dcr l               ; decrement loop counter
+    jz .end             ; when zero, exit loop
+    inx bc              ; increment destination pointer
+    inx de              ; increment source pointer
+    jmp .loop           ; loop
+.end:
+    pop psw             ; restore PSW
+    pop hl              ; restore HL
+    pop de              ; restore original DE
+    pop bc              ; restore original BC
+    ret
+
+; memset
+;
+;   Arguments
+;       bc - address of memory to set
+;       d - value to set memory to
+;       e - number of bytes to set
+;
+memset:
+    push de             ; save original HL
+    push bc             ; save original BC
+    push psw            ; save original PSW
+    ; see if we are done with the loop
+    mov a,e
+    cpi 0
+    jz .end
+.loop:
+    ; write byte value
+    mov a,d
+    stax bc
+    ; decrement counter
+    dcr e
+    jz .end
+    inx bc
+    jmp .loop
+.end:
+    pop psw
+    pop bc
+    pop de
+    ret

@@ -1,0 +1,105 @@
+#include "kernel.a85"
+
+.org 0 "program"
+start:
+    ; first, init the values
+    lxi bc,value1
+    mvi d,0
+    mvi e,4
+    call memset
+    lxi bc,counter
+    call memset
+    lxi bc,value2
+    mvi a,1
+    stax bc
+    inx bc
+    mvi d,0
+    mvi e,3
+    call memset
+.loop:
+    lxi hl,fib_prefix_str
+    call M_SENDSTRING
+    lxi de,counter
+    call print_4byte_hex
+    lxi hl,fib_equals_str
+    call M_SENDSTRING
+    lxi de,value1
+    call print_4byte_hex
+    call M_NEWLINE
+.calc_next_fib:
+    lxi bc,temp_var
+    lxi de,value1
+    mvi a,4
+    call memcopy
+    lxi bc,value1
+    lxi de,value2
+    call add32
+    jc .done
+    lxi bc,value2
+    lxi de,temp_var
+    mvi a,4
+    call memcopy
+    lxi bc,counter
+    call inc32
+    jmp .loop
+.done:
+    lxi hl,fib_overflow
+    call M_SENDSTRING
+    call M_NEWLINE
+    rst 1
+
+
+fib_prefix_str:
+    .cstr "Fibonacci $"
+
+fib_equals_str:
+    .cstr " = $"
+
+fib_overflow:
+    .cstr "All 32-bit Fibonacci numbers found!"
+
+; address to 4 byte value in DE
+print_4byte_hex:
+    push hl             ; save hl
+    push psw            ; save psw
+    lxi hl,3            ; set HL to 3
+    dad de              ; add DE to get pointer to last byte in HL
+    xchg                ; place last byte pointer in DE
+    mvi l,4             ; use L as loop counter
+    mvi h,0             ; use H as leading zero indicator
+.loop:
+    ldax de             ; place byte value in A
+    cpi 0               ; see if value is zero
+    jnz .printbyte      ;
+    mov a,h             ; load leading zero flag
+    cpi 1               ; see if we are not skipping zeros
+    jz .printbyte       ; we are not skipping zeros.
+    mov a,l             ; check loop counter value
+    cpi 1               ; see if we are on last byte
+    jnz .nextloop       ; not on last byte, so skip
+.printbyte:
+    ldax de             ; we not skipping zeros, reload byte value
+    call M_HEXBYTEOUT   ; print byte value in hex
+    mvi h,1             ; we have printed a byte. no more skipping leading zeros.
+.nextloop:
+    dcr l               ; decrement loop counter
+    jz .end             ; if equal, quit
+    dcx de              ; decrement byte pointer
+    jmp .loop           ; loop
+.end:
+    pop psw             ; restore PSW
+    pop hl              ; restore HL
+    ret
+
+
+temp_var:
+    .4byte 0
+
+value1:
+    .4byte 0
+
+value2:
+    .4byte 1
+
+counter:
+    .4byte 0

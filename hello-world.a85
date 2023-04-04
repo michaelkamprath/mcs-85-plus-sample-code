@@ -1,0 +1,20 @@
+#include "kernel.a85"
+
+.org 0 "program"
+display_message:
+    lxi hl,_loop_counter
+    mvi [hl],$20
+.loop:
+    lxi hl,_message_str
+    call M_SENDSTRING
+    lda _loop_counter
+    sui 1
+    sta _loop_counter
+    jnz .loop
+.done:
+    rst 1
+
+_message_str:
+    .cstr "Hello World!\r\n\x03"
+
+_loop_counter: .byte 0

@@ -1,0 +1,485 @@
+.memzone kernel
+
+; add32
+;   adds 32-bit values X+Y
+;
+; arguments:
+;   register BC - address to 4-byte X value (2 bytes)
+;   register DE - address to 4-byte Y value (2 bytes)
+;
+; Return value:
+;   The result replaces the 4-byte value at the address contained in BC
+;
+add32:
+    push hl
+    push bc
+    push de
+    mvi l,3         ; use L as loop counter. initialize to 3 (bytes past the first one)
+.lsb_add:
+    ldax de         ; load LSB of Y
+    mov h,a         ; move it to H
+    ldax bc         ; load LSB of X
+    add h           ; add LSBs
+    stax bc         ; store result in BC+0
+    push psw        ; save PSW, mostly for carry
+.add_loop:
+    inx bc          ; increment X pointer
+    inx de          ; increment Y pointer
+    pop psw         ; restore PSW to get last add's carry
+    ldax de         ; load next byte of Y
+    mov h,a         ; move it to H
+    ldax bc         ; load next byte of X
+    adc h           ; add with carry next bytes
+    stax bc         ; store results
+    push psw        ; save PSW, mostly for the carry
+    ; handle next loop
+    dcr l           ; decrement loop counter
+    jnz .add_loop   ; if not zero, loop
+.end:
+    pop psw         ; restore carry from last add
+    pop de
+    pop bc
+    pop hl
+    ret
+
+; subtract32
+;   Sbtracts 32-bit values X-Y
+;
+; arguments:
+;   register BC - address to 4-byte X value (2 bytes)
+;   register DE - address to 4-byte Y value (2 bytes)
+;
+; Return value:
+;   The result replaces the 4-byte value at the address contained in BC
+;   Carry bit is set as appropriate for subtraction.
+;
+subtract32:
+    push hl
+    push bc
+    push de
+    mvi l,3         ; use L as loop counter. initialize to 3 (bytes past the first one)
+.lsb_add:
+    ldax de         ; load LSB of Y
+    mov h,a         ; move it to H
+    ldax bc         ; load LSB of X
+    sub h           ; subtract LSBs (X-Y)
+    stax bc         ; store result in BC+0
+    push psw        ; save PSW, mostly for carry
+.sub_loop:
+    inx bc          ; increment X pointer
+    inx de          ; increment Y pointer
+    pop psw         ; restore PSW to get last add's carry
+    ldax de         ; load next byte of Y
+    mov h,a         ; move it to H
+    ldax bc         ; load next byte of X
+    sbb h           ; subtract with borrow next bytes
+    push psw        ; save PSW, mostly for the carry
+    stax bc         ; store results
+    ; handle next loop
+    dcr l           ; decrement loop counter
+    jnz .sub_loop   ; if not zero, loop
+.end:
+    pop psw         ; restore carry from last subtract
+    pop de
+    pop bc
+    pop hl
+    ret
+
+
+
+; inc32
+;   increments a 32-bit value
+;
+; arguments:
+;   register BC - address to 4-byte value to increment (2 bytes)
+;
+; Return value:
+;   The result replaces the 4-byte value at the address contained in BC
+;
+inc32:
+    push hl         ; save original hl
+    push bc         ; save original bc
+    ; byte 0
+    ldax bc
+    adi 1
+    stax bc
+    push psw        ; save PSW for carry
+    ; remaining bytes
+    mvi l,3         ; use L as loop counter
+.loop:
+    ; increment address, saving PSW for carry
+    inx bc          ; next byte address
+    pop psw         ; restore PSW for carry
+    ; get next byte
+    ldax bc
+    ; add 0 but with carry
+    aci 0
+    stax bc
+    push psw        ; save PSW for carry
+    dcr l           ; decrement loop counter
+    jnz .loop       ; if not zero, loop
+.end:
+    pop psw
+    pop bc
+    pop hl
+    ret
+
+; multiply32
+;   multiplies two 4-byte numbers X*Y producing an 8-byte result
+;
+;   Arguments
+;       BC - address to 4 byte value X (multiplicand)
+;       DE - address to 4 byte value Y (multiplier)
+;
+;   Results
+;       4 bytes at BC - will contain low 4 bytes of result
+;       4 bytes ar DE - will contain high 4 bytes of result
+;
+;
+multiply32:
+    push psw
+    push hl
+    push bc
+    push de
+    ; save DE value
+    push de
+    xchg                ; DE -> HL
+    shld _multiplier_ptr
+    mov h,b
+    mov l,c             ; BC -> HL
+    shld _multiplicand_ptr
+    ;  set up working memory
+    ; high word initialize to 0
+    lxi bc,_working_mem+4
+    mvi d,0
+    mvi e,4
+    call memset
+    ; multiplier in low word
+    lxi bc,_working_mem
+    pop de
+    mvi a,4
+    call memcopy
+    ; set loop counter
+    mvi a,32
+    sta _loop_counter           ; set loop counter
+    ; memory state at start
+    ;  _working_mem[0..3] = Y (multiplier)
+    ;  _working_mem[4..7] = 0
+    ;  _multiplicand_ptr = ptr to X (multiplicand)
+    ;  _loop_counter = loop counter,s tarting at 32
+.loop:
+    ; check to see if LSb of working memory is 1
+    lxi de,_working_mem
+    ldax de
+    ani 1
+    jz .continue
+    ; add high word of results to multiplicand
+    lxi bc,_working_mem+4       ; set BC to addres of high word of morking mem
+    lhld _multiplicand_ptr      ; load multiplicand ptr into HL
+    xchg                        ; DE <-> HL
+    call add32
+.continue:
+    ; shift working memory right 1
+    lxi bc,_working_mem
+    call lsr64
+    ; decrement loop counter and check if done
+    lda _loop_counter
+    dcr a
+    sta _loop_counter
+    jnz .loop
+    ; place results in appropriate destinations
+    ; copy low word to destination
+    lhld _results_low_ptr
+    mov b,h
+    mov c,l
+    lxi de,_working_mem
+    mvi a,4
+    call memcopy
+    ; copy high word
+    lhld _results_high_ptr
+    mov b,h
+    mov c,l
+    lxi de,_working_mem+4
+    mvi a,4
+    call memcopy
+.end:
+    pop de
+    pop bc
+    pop hl
+    pop psw
+    ret
+
+; memory blocks used by multiplication and division
+_working_mem:
+    .8byte 0
+_results_high_ptr:
+_multiplier_ptr:
+_dividend_ptr:
+_quotient_ptr:
+    .2byte 0
+_results_low_ptr:
+_multiplicand_ptr:
+_divisor_ptr:
+_remainder_ptr:
+    .2byte 0
+_temp_4byte:
+    .4byte 0
+_carry_bit:
+    .byte 0
+_loop_counter:
+    .byte 0
+
+
+; divide32
+;   divides X by Y (X/Y) producing a quotient and remainder
+;
+;   Arguments
+;       register BC - address to 4-byte X value - dividend (2 bytes)
+;       register DE - address to 4-byte Y value - divisor (2 bytes)
+;
+;   Results
+;       memory pointer to by BC - the 4-byte quotient
+;       memory pointed to by DE - the 4-byte remainder
+;
+
+divide32:
+    push psw
+    push hl
+    push bc
+    push de
+    ; save BC (dividend ptr) value to stack
+    push bc
+    ; save divisor ptr
+    xchg                ; DE -> HL
+    shld _divisor_ptr
+    ; save dividend ptr
+    mov h,b
+    mov l,c             ; BC -> HL
+    shld _dividend_ptr
+    ;  set up working memory
+    ; high word initialize to 0
+    lxi bc,_working_mem+4
+    mvi d,0
+    mvi e,4
+    call memset
+    ; dividend in low word
+    lxi bc,_working_mem
+    pop de                      ; pop saved dividend ptr back into DE
+    mvi a,4
+    call memcopy
+    ; init carry bit tracker
+    mvi a,0
+    sta _carry_bit
+    ; set loop counter
+    mvi a,32
+    sta _loop_counter           ; set loop counter
+
+    ; memory state at start
+    ;  _working_mem[0..3] = X (dividend) -> becomes quotient
+    ;  _working_mem[4..7] = 0 -> becomes remainder
+    ;  _multiplicand_ptr = ptr to Y (divisor)
+    ;  _carry_bit = 0
+    ;  _loop_counter = loop counter,s tarting at 32
+.div_loop:
+    ; left shift working mem
+    lxi bc,_working_mem
+    call lsl64
+    ; apply saved carry bit to LSB
+    lda _working_mem+0
+    lxi hl,_carry_bit
+    ora [hl]                ; OR carry bit to LSB or working mem
+    sta _working_mem+0      ; place results back to LSB
+    mvi a,0
+    sta _carry_bit          ; reset local carry bit
+    ; attempt a subtraction: (working mem high word) - (divisor)
+    ; write working mem high word to temp location
+    lxi bc,_temp_4byte
+    lxi de,_working_mem+4
+    mvi a,4
+    call memcopy
+    lxi bc,_temp_4byte      ; BC = working mem high word value
+    lhld _divisor_ptr
+    xchg                    ; DE = divisor PTR
+    call subtract32
+    jc .div_loop_continue   ; if substraction has carry bit (borrow), continue
+.div_loop_subtraction:
+    ; save subtraction results to high word and set carry bit
+    lxi bc,_working_mem+4
+    lxi de,_temp_4byte
+    mvi a,4
+    call memcopy
+    ; set carry bit
+    mvi a,1
+    sta _carry_bit          ; set local carry bit
+.div_loop_continue:
+    lda _loop_counter
+    dcr a
+    sta _loop_counter
+    jnz .div_loop           ; loop if not done
+.division_done:
+    ; at this point we have the remainder in the low word
+    ; and then we let shift one more time to get the quotient
+    lhld _remainder_ptr
+    mov b,h
+    mov c,l                 ; load remainder ptr into BC
+    lxi de,_working_mem+4   ; remainder value in working mem
+    mvi a,4
+    call memcopy            ; copy remainder value to destination
+    ; left shift one more time and apply carry bit
+    lxi bc,_working_mem
+    call lsl64
+    lda _working_mem+0
+    lxi hl,_carry_bit
+    ora [hl]                ; OR carry bit to LSB or working mem
+    sta _working_mem+0      ; place results back to LSB
+    ; load quotient into destination
+    lhld _quotient_ptr
+    mov b,h
+    mov c,l                 ; load quotient ptr into BC
+    lxi de,_working_mem+0   ; quotient value in working mem
+    mvi a,4
+    call memcopy            ; copy remainder value to destination
+.end:
+    pop de
+    pop bc
+    pop hl
+    pop psw
+    ret
+
+
+
+; lsr64
+;   shifts 8 bytes right 1 bit
+;
+;   Argument
+;       bc = address to 8 bytes
+;
+;   Returns
+;       values pointed at by BC will be shifted right 1
+;
+lsr64:
+    push hl
+    push de
+    push bc
+    ; first thing to do is clear carry
+    stc                 ; set carry to 1
+    cmc                 ; toggle carry
+    push psw            ; save carry state
+    ; set up loop counter
+    mvi d,8             ; set loop counter to 8 bytes
+    mvi h,0
+    mvi l,7             ; set HL to decremented loop counter for offset
+    dad bc              ; added memory address to offset
+.loop:
+    pop psw             ; restore carry status
+    mov a,[hl]          ; move value at offset ptr into A
+    rar                 ; rotate right though carry
+    push psw            ; save carry
+    mov [hl],a          ; update byte
+    ; see if we are done with loop
+    dcr d
+    jz .end             ; if zero, end
+    dcx hl
+    jmp .loop
+.end:
+    pop psw             ; first PSW pop is from loop
+    pop bc
+    pop de
+    pop hl
+    ret
+
+
+; lsl64
+;   shifts 8 bytes left 1 bit
+;
+;   Argument
+;       bc = address to 8 bytes
+;
+;   Returns
+;       values pointed at by BC will be shifted left 1
+;
+lsl64:
+    push hl
+    push de
+    push bc
+    ; first thing to do is clear carry
+    stc                 ; set carry to 1
+    cmc                 ; toggle carry
+    push psw            ; save carry state
+    ; set up loop counter
+    mvi d,0             ; set loop counter to start byte
+    mov h,b
+    mov l,c             ; set HL to memory address
+.loop:
+    pop psw             ; restore carry status
+    mov a,[hl]          ; move value at offset ptr into A
+    ral                 ; rotate left though carry
+    push psw            ; save carry
+    mov [hl],a          ; update byte
+    ; see if we are done with loop
+    inr d               ; increment loop counter
+    mov a,d             ; put loop counter value in A
+    cpi 8               ; check it against 8
+    jz .end             ; if equal, end
+    inx hl              ; increment HL pointer
+    jmp .loop           ; loop
+.end:
+    pop psw             ; first PSW pop is from loop
+    pop bc
+    pop de
+    pop hl
+    ret
+
+; cmp32
+;   compares X (left side) to Y (right side)
+;
+;   Arguments
+;       register BC - address to 4-byte X value - left
+;       register DE - address to 4-byte Y value - right
+;
+;   Results
+;       carry and zero flag set as:
+;           carry  = 1 --> X > Y
+;           zero   = 1 --> x == Y
+;
+cmp32:
+    push hl
+    push bc
+    push de
+    ; place BC in HL
+    push de
+    push bc
+    pop de
+    xchg
+    ; restore DE
+    pop de
+    ; increment DE and HL to high byte
+    inx de inx de inx de
+    inx hl inx hl inx hl
+    ; compare from high bytes down
+    ; load right side into A
+    ldax de
+    cmp [hl]        ; compare to left side
+    jnz .done       ; if not equal, done
+    ; byte 2
+    dcx de
+    dcx hl
+    ldax de
+    cmp [hl]        ; compare to left side
+    jnz .done       ; if not equal, done
+    ; byte 1
+    dcx de
+    dcx hl
+    ldax de
+    cmp [hl]        ; compare to left side
+    jnz .done       ; if not equal, done
+    ; byte 0
+    dcx de
+    dcx hl
+    ldax de
+    cmp [hl]        ; compare to left side
+.done:
+    pop de
+    pop bc
+    pop hl
+    ret
