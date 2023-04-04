@@ -17,7 +17,7 @@ Where `fibonacci.a85` is replaced by the program you wish to compile
 Note that while all the 8085 mnemonics are identical with this BespokeASM confirguration, there are some differences with assembler directives from legacy 8085 assemblers. [These differences are documented here](https://github.com/michaelkamprath/bespokeasm/tree/main/examples/intel-8085#instruction-set). As a result, minor modifications of legacy 8085 assembly code is required in order to compile it with BespokeASM.
 
 ## MCS-85+ "Kernel"
-A very lightweight kernel for creating program for the MCS-85+ is available in the [`common` directory](./common) of this repository. It provides 32-bit math and memory management functions, plus defines some constants for calling functions in the monitor, notably serial printing functions. To use this kernel, your program's code would start witht he following:
+A very lightweight kernel for creating program for the MCS-85+ is available in the [`common` directory](./common) of this repository. It provides 32-bit math and memory management functions, plus defines some constants for calling functions in the monitor, notably serial printing functions. To use this kernel, your program's code would start with the following:
 ```asm
 #include "kernel.a85"
 
