@@ -209,27 +209,6 @@ multiply32:
     pop psw
     ret
 
-; memory blocks used by multiplication and division
-_working_mem:
-    .8byte 0
-_results_high_ptr:
-_multiplier_ptr:
-_dividend_ptr:
-_quotient_ptr:
-    .2byte 0
-_results_low_ptr:
-_multiplicand_ptr:
-_divisor_ptr:
-_remainder_ptr:
-    .2byte 0
-_temp_4byte:
-    .4byte 0
-_carry_bit:
-    .byte 0
-_loop_counter:
-    .byte 0
-
-
 ; divide32
 ;   divides X by Y (X/Y) producing a quotient and remainder
 ;
@@ -483,3 +462,24 @@ cmp32:
     pop bc
     pop hl
     ret
+
+.memzone kernel_variables
+; memory blocks used by multiplication and division
+_working_mem:
+    .8byte 0
+_results_high_ptr:
+_multiplier_ptr:
+_dividend_ptr:
+_quotient_ptr:
+    .2byte 0
+_results_low_ptr:
+_multiplicand_ptr:
+_divisor_ptr:
+_remainder_ptr:
+    .2byte 0
+_temp_4byte:
+    .4byte 0
+_carry_bit:
+    .byte 0
+_loop_counter:
+    .byte 0

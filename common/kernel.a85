@@ -60,8 +60,8 @@ M_NEWLINE = $04dc
 STACK_TOP = $18AF
 #create_memzone stack $1840 $18AF
 #create_memzone kernel_variables $1800 $183F
-#create_memzone kernel $2800 $2A1F
-#create_memzone program $2A20 $2BFF
+#create_memzone kernel $2800 $2A00
+#create_memzone program $2A00 $2BFF
 
 ; fill the stack with zeros, mostly to triger a compilation error if
 ; something else tries to compile into this space.
