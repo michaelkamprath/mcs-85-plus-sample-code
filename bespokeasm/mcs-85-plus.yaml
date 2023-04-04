@@ -21,7 +21,7 @@ general:
     name: intel-8085-asm
     version: "0.1.0"
     extension: a85
-  min_version: 0.3.0
+  min_version: 0.3.3
   cstr_terminator: 3
 operand_sets:
   8_bit_source:
