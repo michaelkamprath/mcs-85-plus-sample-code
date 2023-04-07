@@ -9,7 +9,6 @@ The current version of the MCS-85 Resident Monitor may be obtained at [the Bits 
 ## Using BespokeASM
 [BespokeASM](https://github.com/michaelkamprath/bespokeasm) is an assembler that can work with any instruction set as long as a configuration for that instruction set has been produced. A configuration for the Intel 8085 tailored for the MCS-85+ [is available in this repository](./bespokeasm/). The MCS-85+ monitor can accept programs via the serial connection using Intel Hex format. BespokeASM will ompile a program to the Intel Hex format suitable for copy & pasting into you terminal program with this command (as executded from the root directory of this repository):
 ```sh
-```sh
 bespokeasm compile -c bespokeasm/mcs-85-plus.yaml -p -t intel_hex -n -I common fibonacci.a85
 ```
 Where `fibonacci.a85` is replaced by the program you wish to compile
