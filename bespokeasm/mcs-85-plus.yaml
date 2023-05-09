@@ -18,7 +18,7 @@ general:
     - psw
   origin: 0
   identifier:
-    name: intel-8085-asm
+    name: mcs-85-plus-asm
     version: "0.1.0"
     extension: a85
   min_version: 0.3.3

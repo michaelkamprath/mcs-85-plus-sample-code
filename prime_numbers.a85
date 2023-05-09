@@ -1,3 +1,10 @@
+; 32-bit Prime Numbers Calculator
+;   For the MCS-85+ SBC
+;
+; Calculates and displays in hex all prime numbers
+; representable by 32-bit unsigned integers.
+;
+#require "mcs-85-plus-asm >= 0.1.0"
 #include "kernel.a85"
 
 .org 0 "program"
